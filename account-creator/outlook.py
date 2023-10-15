@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 from email.header import decode_header
 
 class Reddit_Verify:
-    def outlook_mail(email_id, passw):
+    def outlook_mail(bot_number,email_id, passw):
             
         # Outlook IMAP server and login credentials
         outlook_server = "outlook.office365.com"
@@ -15,46 +15,57 @@ class Reddit_Verify:
         try:
             imap = imaplib.IMAP4_SSL(outlook_server)
             imap.login(email_address, password)
+            print(f'[{bot_number}] Mail_Handler: Logged in to Outlook')
         except Exception as e:
-            print("Error connecting to Outlook: ", str(e))
-            exit(1)
+            print(f"[{bot_number}] Mail_Handler: Error login to Outlook: Account Locked.")
+            return False
 
         # Select the mailbox you want to access (e.g., "inbox")
         mailbox = "inbox"
-        try:
-            imap.select(mailbox)
-        except Exception as e:
-            print("Error selecting mailbox: ", str(e))
-            imap.logout()
-            exit(1)
+        imap.select(mailbox)
 
         # Search for the latest email
         try:
             status, email_ids = imap.search(None, "ALL")  # You can use other criteria like "UNSEEN" for unread emails
             email_ids = email_ids[0].split()
-            latest_email_id = email_ids[-1]
+            print(f'[{bot_number}] Total mails in Inbox:',len(email_ids))
         except Exception as e:
-            print("Error searching for emails: ", str(e))
+            print(f"[{bot_number}] Error searching for emails: ", str(e))
             imap.logout()
             exit(1)
 
-        # Fetch the latest email
-        try:
-            status, email_data = imap.fetch(latest_email_id, "(RFC822)")
-            raw_email = email_data[0][1]
-            msg = email.message_from_bytes(raw_email)
+        # check all emails with reversed order
+        for email_id in reversed(email_ids):
+            try:
+                status, email_data = imap.fetch(email_id, "(RFC822)")
+                raw_email = email_data[0][1]
+                msg = email.message_from_bytes(raw_email)
+                
+                # Get email subject and sender
+                subject, encoding = decode_header(msg["Subject"])[0]
+                sender, encoding = decode_header(msg["From"])[0]
+                try:
+                    body = msg.get_payload(decode=True).decode()
+                except:
+                    pass
+  
+            except Exception as e:
+                print(f"[{bot_number}] Error fetching email {email_id}: ", str(e))
+                continue
             
-            # Get email subject and sender
-            subject, encoding = decode_header(msg["Subject"])[0]
-            sender, encoding = decode_header(msg["From"])[0]
-            body = msg.get_payload(decode=True).decode()
+            if 'Reddit' in sender:
+                print(f'[{bot_number}] Mail_Handler: Reddit mail found')
+                soup = BeautifulSoup(body, 'html.parser')
+                links = soup.find_all('a')
+                for link in links:
+                    if 'verification' in str(link.get('href')):
+                        print(f'[{bot_number}] Mail_Handler: Reddit verification link found')
+                        imap.logout()
+                        return str(link.get('href'))
+            else:
+                continue
             
-            # If you want to get the email body, you can use msg.get_payload() and decode it if necessary
-            # email_body = msg.get_payload(decode=True).decode()
-           
-        except Exception as e:
-            print("Error fetching latest email: ", str(e))
-
+        print(f'[{bot_number}] Mail_Handler: No Reddit mail found')
         # Logout and close the IMAP connection
         imap.logout()
-        return subject, sender, body
+        return False

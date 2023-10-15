@@ -8,7 +8,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
 from driver import create_driver_with_proxy
@@ -18,7 +17,6 @@ import shutil
 import re
 from bs4 import BeautifulSoup
 import essentials
-import check_outlook
 from outlook import Reddit_Verify
 
 def signup_process(email, driver):
@@ -50,8 +48,8 @@ def signup_process(email, driver):
     password_field = WebDriverWait(driver, 10).until(
         EC.visibility_of_element_located((By.ID, 'regPassword'))
     )
-    # get strong password except comma in it
-    password = random.choice([''.join(random.sample('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+', 16)) for i in range(10)])
+    # get strong password of length 10 except comma in it
+    password = ''.join ([random.choice('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+') for i in range(10)])
     password_field.send_keys(password)
     # get form content with class="AnimatedForm__content"
     form_content = WebDriverWait(driver, 10).until(
@@ -95,23 +93,14 @@ def signup_process(email, driver):
         return [False, None, None, None, None]
     
 def verify_mail(driver, user, passw):
-    subject, sender, body = Reddit_Verify.outlook_mail(user, passw)
-    if 'verify your email address' in subject.lower():
-        print(f'[{bot_number}] Email Subject Verified')
-        if 'reddit' in sender.lower():
-            print(f'[{bot_number}] Email Sender Verified')
-            soup = BeautifulSoup(body, 'html.parser')
-            links = soup.find_all('a')
-            for link in links:
-                href = link.get('href')
-                if 'verification' in href:
-                    print(f'[{bot_number}] Email Link Verified')
-                    driver.get(href)
-                    time.sleep(20)
-                    if 'verify=true' in driver.current_url:
-                        return True
-                    else:
-                        return False
+    time.sleep(30)
+    mail_res = Reddit_Verify.outlook_mail(bot_number, user, passw)
+    if not mail_res:
+        return False
+    else:
+        driver.get(mail_res)
+        time.sleep(5)
+        return True
 
 def calibrate_setting_process(driver):
     driver.get('https://www.reddit.com/settings/feed/')
@@ -218,21 +207,21 @@ def agree_for_cookies():
         accept_button[0].click()
         print(f'[{bot_number}] Cookies Aleart Accepted.')
     except:
-        print("No Coookies aleart found.")
+        print(f"[{bot_number}] No Cookies Aleart Found on this Page.")
         
 
         
 
 if __name__ == "__main__":
-    base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     save_file = False
     index = int(sys.argv[1])
-    # index = 1
+    # index = 9
     batch_size = int(sys.argv[2])
     # batch_size = 1
     cycle_number = index + 1
     bot_number = (cycle_number % batch_size) + 1
-    assets_dir = os.path.join(base_path, 'assets')
+    assets_dir = os.path.join(base_dir, 'assets')
     proxies_file = os.path.join(assets_dir, 'fresh_proxies.txt')
     generated_mails_file = os.path.join(assets_dir, 'fresh_outlook_mails.txt')
     proxies = get_proxies()
@@ -245,35 +234,32 @@ if __name__ == "__main__":
         lines = file.readlines()
         for row in lines:
             row = row.strip()
-            mails.append(rows)
+            mails.append(row)
     email = mails[index]
+    email_password = essentials.get_password(email)
     
     print(f'[{bot_number}] Starting Bot.')
     print(f'[{bot_number}] Selected Proxy: {proxy_username}.')
     
     tries = 0
     while True:
-        if tries > 5:
-            print(f'[{bot_number}] Tried 5 times, but failed to get a valid proxy connection.')
+        if tries > 2:
+            print(f'[{bot_number}] Tried 2 times, but failed to get a valid proxy connection.')
             essentials.change_status('proxy', proxy, 'error')
-            sys.exit(1)
+            sys.exit(0)
         try:
             # create a new chrome session
             driver, profile_name = create_driver_with_proxy(proxy_host, proxy_port, proxy_username, proxy_password, is_profile=True)
             driver.get('https://www.reddit.com/account/register')
+            time.sleep(5)
             break
         except:
             print(f'[{bot_number}] Error Connecting Proxy, Trying Again')
+            driver.quit()
             tries += 1
             continue
-    email_password = essentials.get_password(email)
     
     try: 
-        check_res = check_outlook.check_mail(driver, email, email_password)
-        # open enw tab
-        driver.execute_script("window.open('');")
-        # switch to the new window which is second in window_handles array
-        driver.switch_to.window(driver.window_handles[1])
         response = signup_process(email, driver)
         if response[0] == True:
             print(f'[{bot_number}] Signup Successfull')
@@ -281,25 +267,13 @@ if __name__ == "__main__":
             print(f'[{bot_number}] Email Password: {email_password}')
             print(f'[{bot_number}] Username: {response[3]}')
             print(f'[{bot_number}] Password: {response[4]}')
-            print(f'[{bot_number}] Time Taken: {time.time() - response[1]}')
+            print(f'[{bot_number}] Time Taken: {int(time.time() - response[1])} seconds')
             save_file = True
             # get date and time in DD-MM-YYYT HH:MM:SS format
             date_time = time.strftime('%d-%m-%Y %H:%M:%S', time.localtime(response[1]))
-            file_text = f'{response[3]},{response[4]},{response[2]},{proxy_username},{date_time},General,General,0'
+            file_text = f'{response[3]},{response[4]},{response[2]},{proxy_username},{date_time},General,General'
             calibrate = False
             avatar = False
-            try:
-                print(f'[{bot_number}] Verifying Mail')
-                res = verify_mail(driver, response[2], email_password)
-                if res == True:
-                    print(f'[{bot_number}] Mail Verified')
-                    file_text += ',1'
-                else:
-                    print(f'[{bot_number}] Error Verifying Mail')
-                    file_text += ',0'
-            except:
-                print(f'[{bot_number}] Error Verifying Mail')
-                file_text += ',0'
             try:
                 print(f'[{bot_number}] Calibrating Settings')
                 res = calibrate_setting_process(driver)
@@ -324,6 +298,19 @@ if __name__ == "__main__":
             except:
                 print(f'[{bot_number}] Error Randomizing Avatar')
                 avatar = False
+            
+            try:
+                print(f'[{bot_number}] Verifying Mail')
+                res = verify_mail(driver, response[2], email_password)
+                if res == True:
+                    print(f'[{bot_number}] Mail Verified')
+                    file_text += ',1'
+                else:
+                    print(f'[{bot_number}] Error Verifying Mail')
+                    file_text += ',0'
+            except Exception as e:
+                print(f'[{bot_number}] Error Verifying Mail: {e}')
+                file_text += ',0'
                 
             if calibrate == True and avatar == True:
                 print(f'[{bot_number}] Account Ready to Use')
@@ -346,8 +333,8 @@ if __name__ == "__main__":
         with open(accounts_file, 'a') as file:
             file.write(file_text)
         print(f'[{bot_number}] Account created.')
-        essentials.change_status('mail', email, 'Consumed')
-        essentials.change_status('proxy', proxy, 'Consumed')
+        essentials.change_status('mail', response[2], 'used')
+        essentials.change_status('proxy', proxy, 'used')
     else:
         print(f'[{bot_number}] Nothing to Save in File')
     
@@ -375,9 +362,6 @@ if __name__ == "__main__":
     else:
         # remove profile non empty dir
         shutil.rmtree(profile_dir)
-        
-    essentials.change_tag('proxy', proxy, 'in_use', '0')
-    essentials.change_tag('proxy', proxy, 'in_use', '0')
     
     print(f'[{bot_number}] Bot Finished')
     

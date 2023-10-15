@@ -36,9 +36,7 @@ if __name__ == "__main__":
             new_proxies = [line.strip() for line in file.readlines() if line.strip()]
             
             if len(new_proxies) == 0:
-                print('No New proxies found in the file')
-                print('Proceeding.....')
-                sys.exit()
+                pass
             else:
                 with open(destination_path, 'a') as f:
                     for proxy in new_proxies:
@@ -47,5 +45,35 @@ if __name__ == "__main__":
         with open(new_proxies_path, 'w') as file:
             file.write('')
             
+        # copy ipv4  proxies
+        ipv4_proxies_path = os.path.join(base_dir,'outlook-creator', 'ipv4.txt')
+        des_path = os.path.join(base_dir, 'assets', 'ipv4.txt')
+        with open(ipv4_proxies_path, 'r') as file:
+            ipv4_proxies = [line.strip() for line in file.readlines() if line.strip()]
+            if len(ipv4_proxies) == 0:
+                pass
+            else:
+                with open(des_path, 'a') as f:
+                    for proxy in ipv4_proxies:
+                        f.write(f"{proxy}\n")
+            
         print('Proceeding.....')
+        
+    elif 'clear' in action:
+        if 'prox' in action:
+            #  remove all proxies in the csv file
+            csv = pd.read_csv(proxies_path)
+            # remove all emails with status none except the header
+            csv = csv[csv['status'] != 'none']
+            csv.to_csv(proxies_path, index=False)
+            print('All proxies cleared')
+        elif 'mail' in action:
+            # remove all outlooks with status none except the header
+            csv = pd.read_csv(outlook_path)
+            csv = csv[csv['status'] != 'none']
+            csv.to_csv(outlook_path, index=False)
+            print('All outlooks cleared')
+        else:
+            print('Please Specify what to clear')
+        
                 

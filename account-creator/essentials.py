@@ -11,7 +11,6 @@ def change_status(hint, identifier, status):
             if identifier in row['username']:
                 df.loc[index, 'status'] = status
                 df.to_csv(mail_path, index=False)
-                print(f'Mail Status Changed to {status}')
                 return True
         return False
     if 'prox' in hint.lower():
@@ -30,4 +29,13 @@ def get_password(username):
     for index, row in df.iterrows():
         if username in row['username']:
             return row['password']
+
+def get_proxy(identifier):
+    base_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    proxies_path = os.path.join(base_dir, 'assets', 'proxies.csv')
+    df = pd.read_csv(proxies_path)
+    for index, row in df.iterrows():
+        if identifier in row['proxy']:
+            return row['proxy']
+    return False
     

@@ -2,9 +2,8 @@ from seleniumwire import webdriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver import ChromeOptions
 import os
 import sys
 import random
@@ -25,23 +24,27 @@ def create_driver_with_proxy(proxy_host, proxy_port, proxy_username, proxy_passw
         }
     }
     options = ChromeOptions()
-    # add ca.crt to chrome options
-    options.add_argument('--ignore-certificate-errors-spki-list')
-    options.add_argument('--ignore-ssl-errors-spki-list')
-    options.add_argument('--ignore-certificate-errors')
-    options.add_argument('--ignore-ssl-errors')
     options.add_argument('--headless')
     options.add_argument('--disable-gpu')
     options.add_argument('--log-level=3')
     options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument("--disable-extensions")
+    options.add_argument('--ignore-ssl-errors=yes')
+    options.add_argument('--ignore-certificate-errors')
     driver = uc.Chrome(options=options, seleniumwire_options=proxy_options)
     return driver
+
+def make_activity():
+    # get span with id="id__355"
+    span = WebDriverWait(driver, 120).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, 'span#id__355'))
+    )
+    span.click()
 
 def solve_funcaptcha(driver):
     time.sleep(10)
     def funcaptcha():
-        apikey = "e37aac2eee994685b553354b3dfb69df"
+        apikey = "d9dd3bdb07074dea9ff2479374632ec5"
         client = OneStCaptchaClient(apikey=apikey)
         site_key = "B7D8911C-5CC8-A9A3-35B0-554ACEE604DA"
         site_url = "https://signup.live.com/"
@@ -70,6 +73,8 @@ if __name__ == '__main__':
     done = False
     tries = 0
     index = int(sys.argv[1])
+    # index = 25
+    # batch_size = 1
     batch_size = int(sys.argv[2])
     while True:
         if tries > 2:
@@ -152,7 +157,7 @@ if __name__ == '__main__':
             next_button = WebDriverWait(driver, 60).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, 'input#iSignupAction'))
             )
-            print(f'[{bot_number}] Full Namme = {first_name} {last_name}')
+            print(f'[{bot_number}] Full Name = {first_name} {last_name}')
             next_button.click()
             time.sleep(2)
             print(f"[{bot_number}] Sending Full Name...")
@@ -214,6 +219,7 @@ if __name__ == '__main__':
                 EC.presence_of_all_elements_located((By.CSS_SELECTOR, 'button'))
             )
             time.sleep(2)
+            print(f'[{bot_number}] Agreeing to Terms...')
             while True:
                 buttons[0].click()
                 time.sleep(10)
@@ -223,22 +229,21 @@ if __name__ == '__main__':
                 else:
                     done = True
                     break
+            
             if done:
                 break
             else:
                 driver.quit()
                 tries +=1
                 continue
-        except:
+        except Exception as e:
             print(f'[{bot_number}] Error with process. Trying Again.')
             driver.quit()
             tries +=1
             continue
         
     if done:    
-        print(f'[{bot_number}] Account Ready to Use')
-        driver.quit()
-            
+        print(f'[{bot_number}] Account Ready to Use')  
         # check the account file
         account_file = os.path.join(base_dir,'assets', 'outlook_mails.csv')
         if not os.path.isfile(account_file):
@@ -251,3 +256,44 @@ if __name__ == '__main__':
             writer.writerow(['none',f"{username}@outlook.com", password])
         print(f'[{bot_number}] Account Saved')
         
+        try :
+            print(f'[{bot_number}] Confirming Signup...')   
+            while True:
+                time.sleep(20)
+                url = driver.current_url
+                if 'login.srf' in url:
+                    # Press enter key with body element
+                    kmsi_checkbox = WebDriverWait(driver, 30).until(
+                        EC.presence_of_element_located((By.ID, "idSIButton9"))
+                    )
+                    kmsi_checkbox.send_keys(Keys.ENTER)
+                    continue
+                else:
+                    break
+            
+            time.sleep(20)
+            print(f'[{bot_number}] Going to Inbox...')
+            driver.get('https://www.outlook.com')
+            time.sleep(5)
+            
+            print(f'[{bot_number}] Initiating Inbox...')
+            tries = 0
+            while True:
+                if tries > 4:
+                    print(f'[{bot_number}] Inbox Initiation Failed. "Timeout Error"')
+                    break
+                time.sleep(15)
+                url = driver.current_url
+                if '/0/' in url:
+                    time.sleep(15)
+                    print(f'[{bot_number}] Inbox Ready')
+                    break
+                else:
+                    tries +=1
+                    continue
+            
+            print(f'[{bot_number}] Process Ended')
+        except:
+            print(f'[{bot_number}] Issue contacting Inbox. But Account is ready.')
+            print(f'[{bot_number}] Process Ended')
+    driver.quit()
