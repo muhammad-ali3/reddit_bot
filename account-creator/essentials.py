@@ -1,4 +1,5 @@
 import pandas as pd
+import requests
 import os
 
 def change_status(hint, identifier, status):
@@ -38,4 +39,27 @@ def get_proxy(identifier):
         if identifier in row['proxy']:
             return row['proxy']
     return False
+
+def get_country_info(cca2):
+    country = False
+    base_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    countries_path = os.path.join(base_dir, 'assets', 'countries.csv')
+    df = pd.read_csv(countries_path)
+    for index, row in df.iterrows():
+        if row['CCA2'] == cca2:
+            country = row['Name']
+            break
+        continue
+    while True:
+        try:
+            response = requests.get(f'https://countryinfoapi.com/api/countries/name/{country}')
+            break
+        except:
+            continue
+    timezone = response.json()['timezones'][0]
+    language = response.json()['languages']
+    # get value of first key in dict
+    language = list(language.keys())[0]
+    return timezone, language
+    
     

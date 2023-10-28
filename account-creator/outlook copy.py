@@ -69,3 +69,6 @@ class Reddit_Verify:
         # Logout and close the IMAP connection
         imap.logout()
         return False
+    
+link = Reddit_Verify.outlook_mail(1,'roten_pernett_334165@outlook.com','w-4hLrS5dv')
+print(link)

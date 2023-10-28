@@ -5,7 +5,7 @@ import email
 from bs4 import BeautifulSoup
 from email.header import decode_header
 import pandas as pd
-from essentials import get_proxy
+from essentials import get_proxy, get_password
 import os
 import time
 
@@ -20,7 +20,7 @@ def outlook_mail(email_address, password):
         print('Mail_Handler: Logged in to Outlook')
     except Exception as e:
         print("Mail_Handler: Error login to Outlook: Account Locked")
-        exit(1)
+        return False
 
     # Select the mailbox you want to access (e.g., "inbox")
     mailbox = "inbox"
@@ -34,7 +34,7 @@ def outlook_mail(email_address, password):
     except Exception as e:
         print("Error searching for emails: ", str(e))
         imap.logout()
-        exit(1)
+        return False
 
     # check all emails with reversed order
     for email_id in reversed(email_ids):
@@ -83,6 +83,7 @@ if __name__ == '__main__':
     accounts = pd.read_csv(accounts_path)
     for index, row in accounts.iterrows():
         if row['is_verified'] == 0:
+            print("============================================\n")
             print('Mail_Handler: Unverified account found')
             username = row['username']
             password = row['password']
@@ -94,14 +95,20 @@ if __name__ == '__main__':
             date_created = time.mktime(time.strptime(date, '%d-%m-%Y %H:%M:%S'))
             current_time = time.time()
             passed_time = current_time - date_created
-            print(passed_time)
+            # print time in hh mm ss
+            print('Mail_Handler: Time passed since account creation: ', time.strftime("%H:%M:%S", time.gmtime(passed_time)))    
             # check if 18 hours have passed 
             if passed_time > 64800:
                 print('Mail_Handler: 24 hours have not passed')
                 print('Mail_Handler: Link is now useless Skipping account')
                 continue
+            email_password = get_password(email_address)
+            print(f'Mail_Handler: Username = {username}')
+            print(f'Mail_Handler: Password = {password}')
+            print(f'Mail_Handler: Email = {email_address}')
+            print(f'Mail_Handler: Email Password = {email_password}')
             print('Mail_Handler: Checking for verification mail')
-            verification_link = outlook_mail(email_address, password)
+            verification_link = outlook_mail(email_address,email_password)
             if verification_link:
                 print('Mail_Handler: Verification link found')
                 proxy = get_proxy(proxy_username)

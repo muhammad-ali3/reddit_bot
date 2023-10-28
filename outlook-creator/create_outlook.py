@@ -72,10 +72,10 @@ if __name__ == '__main__':
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     done = False
     tries = 0
-    index = int(sys.argv[1])
-    # index = 25
-    # batch_size = 1
-    batch_size = int(sys.argv[2])
+    # index = int(sys.argv[1])
+    index = 8
+    batch_size = 1
+    # batch_size = int(sys.argv[2])
     while True:
         if tries > 2:
             print(f'[{bot_number}] Issue with this bot.')
@@ -106,7 +106,12 @@ if __name__ == '__main__':
             
             
             # create a new chrome session and destroy until there is no tunnel connection error
+            proxy_tries = 0
             while True:
+                if proxy_tries > 3:
+                    print(f'[{bot_number}] Error Proxy Connection. Max Tries Reached. Exiting...')
+                    print(f'[{bot_number}] Process Ended')
+                    sys.exit()
                 try:
                     driver = create_driver_with_proxy(proxy_host, proxy_port, proxy_username, proxy_password)
                     driver.get('https://signup.live.com/')
@@ -115,6 +120,7 @@ if __name__ == '__main__':
                     print(f'[{bot_number}] Error Proxy Connection. Trying Again.')
                     if driver:
                         driver.quit()
+                    proxy_tries +=1
                     continue  
                 
             print(f"[{bot_number}] Process Started")
@@ -257,26 +263,17 @@ if __name__ == '__main__':
         print(f'[{bot_number}] Account Saved')
         
         try :
-            print(f'[{bot_number}] Confirming Signup...')   
-            while True:
-                time.sleep(20)
-                url = driver.current_url
-                if 'login.srf' in url:
-                    # Press enter key with body element
-                    kmsi_checkbox = WebDriverWait(driver, 30).until(
-                        EC.presence_of_element_located((By.ID, "idSIButton9"))
-                    )
-                    kmsi_checkbox.send_keys(Keys.ENTER)
-                    continue
-                else:
-                    break
-            
-            time.sleep(20)
             print(f'[{bot_number}] Going to Inbox...')
-            driver.get('https://www.outlook.com')
+            driver.get('https://outlook.office.com/owa/')
             time.sleep(5)
             
             print(f'[{bot_number}] Initiating Inbox...')
+            # get input with id="i0116"
+            inbox_input = WebDriverWait(driver, 30).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'input#i0116'))
+            )
+            inbox_input.send_keys(f"{username}@outlook.com")
+            inbox_input.send_keys(Keys.ENTER)
             tries = 0
             while True:
                 if tries > 4:
@@ -285,7 +282,8 @@ if __name__ == '__main__':
                 time.sleep(15)
                 url = driver.current_url
                 if '/0/' in url:
-                    time.sleep(15)
+                    time.sleep(20)
+                    driver.save_screenshot(f'inbox{random.randint(0,100000)}.png')
                     print(f'[{bot_number}] Inbox Ready')
                     break
                 else:
@@ -293,7 +291,10 @@ if __name__ == '__main__':
                     continue
             
             print(f'[{bot_number}] Process Ended')
-        except:
+        except Exception as e:
+            randon_number = random.randint(1, 10000)
+            driver.save_screenshot(f'error{randon_number}.png')
             print(f'[{bot_number}] Issue contacting Inbox. But Account is ready.')
+            print(f'[{bot_number}] Issue Snapshot Saved as error{randon_number}.png')
             print(f'[{bot_number}] Process Ended')
     driver.quit()

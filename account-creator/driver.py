@@ -3,8 +3,13 @@ from selenium.webdriver import ChromeOptions as Options
 from selenium.webdriver.chrome.service import Service
 import os
 import random
+from essentials import get_country_info
+import time
+from fake_useragent import UserAgent
 
 def create_driver_with_proxy(proxy_host, proxy_port, proxy_username, proxy_password, is_profile=False):
+    ccn2 = proxy_username.split('-')[2]
+    timezone, language = get_country_info(ccn2)
     if is_profile:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         profiles_dir = os.path.join(base_dir,'assets','profiles')
@@ -25,13 +30,33 @@ def create_driver_with_proxy(proxy_host, proxy_port, proxy_username, proxy_passw
             'no_proxy': 'localhost,127.0.0.1',  # Add any addresses you don't want to proxy
         }
     }
+    ua = UserAgent()
+    user_agent = ua.chrome
+    # clear cache
+    options.add_argument('--disable-application-cache')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--start-maximized')
+    options.add_argument('--single-process')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument("--incognito")
+    options.add_argument('--disable-blink-features=AutomationControlled')
+    options.add_experimental_option('useAutomationExtension', False)
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_argument("disable-infobars")
+    options.add_argument(f'user-agent={user_agent}')
     options.add_argument('--headless')
     options.add_argument('--disable-gpu')
     options.add_argument('--log-level=3')
-    options.add_argument('--no-sandbox')
-    options.add_argument("--disable-extensions")
-    options.add_argument('--ignore-ssl-errors=yes')
-    options.add_argument('--ignore-certificate-errors')
+    # mask webGL fingerprints
+    options.add_argument('--disable-webgl')
+    options.add_argument('--disable-canvas-aa')
+    options.add_argument('--disable-audio-context')
+    # set language
+    options.add_argument(f'--lang={language}')
+    # set timezone
+    options.add_argument(f'--timezone={timezone}')
+    
+    
     
     # set user data dir
     if is_profile:
@@ -39,6 +64,13 @@ def create_driver_with_proxy(proxy_host, proxy_port, proxy_username, proxy_passw
         
     # Set up the Chrome driver with the proxy options
     driver = uc.Chrome(options=options, seleniumwire_options=proxy_options)
+    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+        "source":
+            "const newProto = navigator.__proto__;"
+            "delete newProto.webdriver;"
+            "navigator.__proto__ = newProto;"
+    })
     if is_profile:
         return driver, profile_dir
     else:
@@ -77,5 +109,3 @@ def get_driver_with_proxy_and_profile(proxy_host, proxy_port, proxy_username, pr
     # Set up the Chrome driver with the proxy options
     driver = uc.Chrome(options=options, seleniumwire_options=proxy_options)
     return driver
-
-            
